@@ -1,0 +1,35 @@
+# langchain prompting. 
+What is it?: 
+- predefined structure combines static text with dynamic user inputs.
+- input can be modified by variables set by user input during runtime.
+
+## PromptTemplate
+### Parameters
+- input_variables:
+- template:
+
+## ChatPromptTemplate
+### Parameters:
+- Message type: 
+    - SystemMessage:
+    - HumanMessage:
+    - AIMessage: 
+
+## Runnable Interface
+- DEF: A unit of work that can be invoked, batched, streamed, transformed and composed.
+- Many LangChain components implement the Runnable protocol, including chat models, LLMs, output parsers, retrievers, prompt templates
+- 
+# Hugging Face langchain
+Hugging face hub: over 120k models, 20k datasets, 50k demo apps (Spaces). Open source publicly available.
+
+## HuggingFacePipeline
+- requirements: transformers
+- Only supports text-generation, text2text-generation, summarization and translation for now.
+- Implements standard Runnable Interface
+- api_reference: https://python.langchain.com/api_reference/huggingface/llms/langchain_huggingface.llms.huggingface_pipeline.HuggingFacePipeline.html
+
+## HuggingFaceEndpoint
+- requirements: huggingface_hub, API_TOKEN
+- Implements standard Runnable Interface
+- api_reference: https://python.langchain.com/api_reference/huggingface/llms/langchain_huggingface.llms.huggingface_endpoint.HuggingFaceEndpoint.html
+- Inference endpoint docs: https://huggingface.co/docs/inference-endpoints/en/index

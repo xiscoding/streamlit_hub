@@ -1,0 +1,22 @@
+# Web Scraping
+
+Selenium
+
+Chrome dirver install:
+1. Find chrome version (`chrome://version`)
+2. Update if below 130.0.6723 (chrome should be asking you to do this already)
+3. Download driver corresponding to chrome version (https://googlechromelabs.github.io/chrome-for-testing/#stable)
+4. Extract downloaded .zip -> copy path to driver into python file
+
+DONT DO CHROME DRIVER INSTALL. LATEST VERSION OF SELENIUM HAS SELENIUM MANAGER.
+- Chrome seems to be more prone to captcha situations, we are using edge.
+- drivers for multiple browsers will be installed automatically. 
+
+Activate python virtual environment:
+- source <venv_name>/bin/activate
+
+Run streamlit application: 
+- streamlit run <file to run>
+
+Document Object Model (DOM):
+- "data representation of the objects that comprise the structure and content of a document on the web."
