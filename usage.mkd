@@ -33,3 +33,7 @@ Hugging face hub: over 120k models, 20k datasets, 50k demo apps (Spaces). Open s
 - Implements standard Runnable Interface
 - api_reference: https://python.langchain.com/api_reference/huggingface/llms/langchain_huggingface.llms.huggingface_endpoint.HuggingFaceEndpoint.html
 - Inference endpoint docs: https://huggingface.co/docs/inference-endpoints/en/index
+
+## streamlit app
+- RUN: streamlit run <filename>
+

@@ -2,3 +2,4 @@ bsoup1.py
 selenium1.py
 .env
 ai_scrape/
+api_key*

@@ -44,10 +44,12 @@ def model_selector(model:str):
     if model == "o1-mini":
         return ChatOpenAI(model="o1-mini")
 
-def run_parser(parse_description:str, template:str, model, content:str=None, chunked_data:list=None):
+def create_chain(template:str, model):
     prompt = ChatPromptTemplate.from_template(template)
     chain = prompt | model #| StrOutputParser()
+    return chain
 
+def run_parser(chain, parse_description:str, content:str=None, chunked_data:list=None):
     if chunked_data:
         parsed_results = []
         for i, chunk in enumerate(chunked_data, start=1):

@@ -3,11 +3,11 @@ import streamlit as st
 from dotenv import load_dotenv, set_key
 import getpass
 from run_model import model_selector, run_parser, template1, template2
+from langchain_core.prompts import ChatPromptTemplate
 
 class EnvConfig:
     def __init__(self):
-        load_dotenv()
-        self.huggingfacehub_api_token = os.getenv("HUGGINGFACE_API_TOKEN")
+        self.huggingfacehub_api_token = self._set_if_undefined("HUGGINGFACE_API_TOKEN")
         self.openai_api_token = self._set_if_undefined("OPENAI_API_KEY")
         self.google_genai_api_token = self._set_if_undefined("GOOGLE_GENAI_API")
 
@@ -23,10 +23,10 @@ class ModelSetup:
     def __init__(self, api_token):
         self.api_token = api_token
     
-    def setup_llm(self, task: str, model_name: str):
+    def setup_llm(self, model_name: str):
         model = model_selector(model_name)
-        return run_parser(parse_description=task, template=template1)
-
+        return model
+    
 class ModelSelector:
     def __init__(self, env_config):
         self.cloud_model_setup = ModelSetup(env_config.huggingfacehub_api_token)
@@ -50,7 +50,7 @@ class ModelSelector:
         for model_name, config in self.model_configurations.items():
             setup_instance, model_name = config
             try:
-                self.models[model_name] = QueryExecutor(setup_instance.setup_llm(task="", model_name=model_name))
+                self.models[model_name] = setup_instance.setup_llm(model_name=model_name)
             except Exception as e:
                 print(f"Error setting up model {model_name}: {e}")
 
@@ -63,6 +63,11 @@ class ModelSelector:
 class QueryExecutor:
     def __init__(self, model):
         self.model = model
+
+    def create_chain(template:str, model):
+        prompt = ChatPromptTemplate.from_template(template)
+        chain = prompt | model #| StrOutputParser()
+        return chain
 
     def ask_question(self, question: str, template: str, task: str):
         result = self.model.invoke(question)
@@ -82,7 +87,6 @@ class QueryExecutor:
 
 class StreamlitApp:
     def __init__(self):
-        load_dotenv()
         self.env_config = EnvConfig()
         self.model_selector = ModelSelector(self.env_config)
         self.chat_manager = None
@@ -137,9 +141,12 @@ class StreamlitApp:
         st.title("Ask Your Model")
         question = st.text_input("Enter your question:")
 
+        # Display the chosen template below the text bar and update it when a new task is selected
+        st.write(f"Chosen Template: {chosen_template}")
+
         if st.button("Submit"):
             if question:
-                query_executor = self.model_selector.get_model(chosen_model)
+                query_executor = QueryExecutor(self.model_selector.get_model(chosen_model))
                 output = query_executor.ask_question(question=question, template=chosen_template, task=chosen_task)
                 st.write(output)
 
