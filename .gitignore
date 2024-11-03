@@ -3,3 +3,4 @@ selenium1.py
 .env
 ai_scrape/
 api_key*
+secrets.toml

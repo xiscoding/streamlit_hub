@@ -2,14 +2,18 @@ import os
 import streamlit as st
 from dotenv import load_dotenv, set_key
 import getpass
-from run_model import model_selector, run_parser, template1, template2
+from run_model import  template1, template2
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_ollama import OllamaLLM
+from langchain_mistralai import ChatMistralAI
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 
 class EnvConfig:
     def __init__(self):
         self.huggingfacehub_api_token = self._set_if_undefined("HUGGINGFACE_API_TOKEN")
         self.openai_api_token = self._set_if_undefined("OPENAI_API_KEY")
-        self.google_genai_api_token = self._set_if_undefined("GOOGLE_GENAI_API")
+        self.google_genai_api_token = self._set_if_undefined("GOOGLE_API_KEY")
 
     def _set_if_undefined(self, var: str):
         if not os.environ.get(var):
@@ -22,9 +26,25 @@ class EnvConfig:
 class ModelSetup:
     def __init__(self, api_token):
         self.api_token = api_token
-    
+
+    def model_selector(self, model:str):
+        if model == "ollama":
+            return OllamaLLM(model="llama3")
+        if model == "mistral-large-latest":
+            return ChatMistralAI(model="mistral-large-latest")
+        if model == "gemini-1.5-pro":
+            return ChatGoogleGenerativeAI(model="gemini-1.5-pro")
+        if model == "gpt-4o":
+            return ChatOpenAI(model="gpt-4o")
+        if model == "gpt-4o-mini":
+            return ChatOpenAI(model="gpt-4o-mini")
+        if model == "o1-preview":
+            return ChatOpenAI(model="o1-preview")
+        if model == "o1-mini":
+            return ChatOpenAI(model="o1-mini")
+
     def setup_llm(self, model_name: str):
-        model = model_selector(model_name)
+        model = self.model_selector(model_name)
         return model
     
 class ModelSelector:
@@ -63,14 +83,18 @@ class ModelSelector:
 class QueryExecutor:
     def __init__(self, model):
         self.model = model
-
+        
     def create_chain(template:str, model):
         prompt = ChatPromptTemplate.from_template(template)
         chain = prompt | model #| StrOutputParser()
         return chain
 
-    def ask_question(self, question: str, template: str, task: str):
-        result = self.model.invoke(question)
+    def ask_question(self, question: str, task: str, template: str=None):
+        if (template):
+            chain = self.create_chain(template, self.model)
+            chain.invoke(question)
+        else:
+            result = self.model.invoke(question)
         # Ensure the output is structured as expected
         if isinstance(result, dict):
             output = {'Question': question, 'Answer': result.get('text', "No answer found.")}
@@ -116,8 +140,11 @@ class StreamlitApp:
             for role, message in st.session_state.messages:
                 if role == "You":
                     st.markdown(f"<div class='message-right'>{message}</div>", unsafe_allow_html=True)
+                    # save messages
+                    st.session_state.messages.append({"role":"user", "content":message})
                 else:
                     st.markdown(f"<div class='message-left'>{message}</div>", unsafe_allow_html=True)
+                    st.session_state.messages.append({"role":"user", "content":message})
             st.markdown("</div>", unsafe_allow_html=True)
 
     def run(self):
@@ -128,6 +155,7 @@ class StreamlitApp:
 
         # Define task-template pairs
         task_template_pairs = {
+            "No template" : None,
             "Summarization": "template1",
             "Question Answering": "template2",
             "Sentiment Analysis": "template3"
