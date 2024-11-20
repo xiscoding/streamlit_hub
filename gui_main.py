@@ -184,7 +184,7 @@ class StreamlitApp:
             "No template": "Enter your question:",
             "Summarization": "Enter text to summarize:",
             "Question Answering": "Ask a question about the given context:",
-            "Language Learning": "Enter a sentence to analyze sentiment:",
+            "Language Learning": "Enter a sentence to start learning:",
             "Web Scraping": None  # Web scraping has its own custom UI logic
         }
         return task_prompts.get(chosen_task, "Enter your question:")

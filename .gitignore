@@ -4,3 +4,5 @@ selenium1.py
 ai_scrape/
 api_key*
 secrets.toml
+saved_files/
+__pycache__/

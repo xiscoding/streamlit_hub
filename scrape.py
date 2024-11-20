@@ -29,7 +29,7 @@ def scrape_website(website):
         print(f"Loading page: {website}")
         driver.get(website)
         print("Page loaded...")
-        time.sleep(10)  # Wait to ensure page is fully loaded; adjust as needed
+        time.sleep(2)  # Wait to ensure page is fully loaded; adjust as needed
         html = driver.page_source
         return html
     except Exception as e:
@@ -71,12 +71,14 @@ def extract_div_sections(html_content):
     div_sections = soup.find_all('div', attrs={'data-asin': True})
     return [str(div) for div in div_sections]
 
+from bs4 import BeautifulSoup
+
 def extract_asin_info(html_content):
     """
     Extract 'asin', 'href', and product name from all div sections with 'data-asin'.
 
     :param html_content: The full HTML content of the page.
-    :return: A list of dictionaries containing 'asin', 'href', and 'name'.
+    :return: A list of dictionaries containing 'asin', 'href', 'name', and 'url' (if 'href' is found).
     """
     if not html_content:
         raise ValueError("HTML content cannot be empty.")
@@ -93,14 +95,21 @@ def extract_asin_info(html_content):
         href = link_tag['href'] if link_tag else None
         product_name = product_name_tag.text.strip() if product_name_tag else None
 
+        # Build the asin info dictionary
         asin_info = {
             'asin': asin,
             'href': href,
             'name': product_name
         }
+
+        # Add the full URL only if 'href' is found
+        if href:
+            asin_info['url'] = f"https://amazon.com{href}"
+
         asin_info_list.append(asin_info)
 
     return asin_info_list
+
 
 def clean_body_content(body_content):
     """
@@ -159,7 +168,7 @@ def split_dom_content(dom_content, max_length=6000):
         dom_content[i : i + max_length] for i in range(0, len(dom_content), max_length)
     ]
 
-def save_text_to_file(text, filename):
+def save_text_to_file(filename, text):
     """
     Save the provided text to a file.
 
@@ -175,7 +184,31 @@ def save_text_to_file(text, filename):
         file.write(text)
     print(f"Text successfully saved to {filename}.")
 
-def create_unique_filename(base_name, extension):
+import json
+
+def save_data_to_json(filename, data):
+    """
+    Save the provided data to a JSON file.
+
+    :param data: The data to save. Can be a list, dictionary, or other JSON-serializable object.
+    :param filename: The name of the file where the data will be saved.
+    """
+    if data is None:
+        raise ValueError("Data cannot be None.")
+    if not filename:
+        raise ValueError("Filename cannot be empty.")
+    
+    # Ensure the filename has the correct extension
+    if not filename.endswith('.json'):
+        filename += '.json'
+
+    with open(filename, 'w', encoding='utf-8') as file:
+        json.dump(data, file, indent=4, ensure_ascii=False)
+    
+    print(f"Data successfully saved to {filename}.")
+
+
+def create_unique_filename(base_name, extension=''):
     """
     Create a unique file name by appending the current timestamp to the base name.
 
@@ -185,8 +218,6 @@ def create_unique_filename(base_name, extension):
     """
     if not base_name:
         raise ValueError("Base name cannot be empty.")
-    if not extension:
-        raise ValueError("Extension cannot be empty.")
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
     unique_filename = f"{base_name}_{timestamp}{extension}"
@@ -198,6 +229,14 @@ def create_unique_filename(base_name, extension):
         counter += 1
 
     return unique_filename
+
+def save_content(base_name, content, content_type):
+    """Save content to a file."""
+    try:
+        file_path = create_unique_filename(base_name)
+        save_data_to_json(file_path, content)
+    except Exception as e:
+        print(f"Error saving {content_type}: {str(e)}")
 
 if __name__ == '__main__':
     load_dotenv()  # Load environment variables from a .env file if needed
