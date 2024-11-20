@@ -8,6 +8,19 @@ from langchain_ollama import OllamaLLM
 from langchain_mistralai import ChatMistralAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
+from scrape import (
+    scrape_website,
+    extract_body_content,
+    clean_body_content,
+    split_dom_content,
+    remove_style_and_script_sections,
+    extract_asin_info,
+    save_text_to_file,
+    create_unique_filename
+)
+import time
+
+SAVE_DIR = '/home/xdoestech/Desktop/amazon_scraper/saved_files'
 
 class EnvConfig:
     def __init__(self):
@@ -109,6 +122,38 @@ class QueryExecutor:
                 output = {'Question': question, 'Answer': f"Unexpected error: {str(e)}"}
         return output
 
+class FileSaver:
+    @staticmethod
+    def save_to_file(file_path, content):
+        file_path = os.path.join(SAVE_DIR, file_path)
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(content)
+    
+    @staticmethod
+    def create_unique_filename(base_name, extension='.txt'):
+        """
+        Create a unique file name by appending the current timestamp to the base name.
+
+        :param base_name: The base name of the file (without extension).
+        :param extension: The file extension (e.g., '.txt').
+        :return: A unique file name.
+        """
+        # if not base_name:
+        #     raise ValueError("Base name cannot be empty.")
+        # if not extension:
+        #     raise ValueError("Extension cannot be empty.")
+
+        timestamp = time.strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
+        unique_filename = f"{base_name}_{timestamp}{extension}"
+
+        # Ensure the file name is unique by checking if it already exists
+        counter = 1
+        while os.path.exists(unique_filename):
+            unique_filename = f"{base_name}_{timestamp}_{counter}{extension}"
+            counter += 1
+
+        return unique_filename 
+
 class StreamlitApp:
     def __init__(self):
         self.env_config = EnvConfig()
@@ -133,19 +178,78 @@ class StreamlitApp:
             </style>
             """, unsafe_allow_html=True)
 
-    def display_messages(self):
-        message_container = st.container()
-        with message_container:
-            st.markdown("<div class='chat-messages'>", unsafe_allow_html=True)
-            for role, message in st.session_state.messages:
-                if role == "You":
-                    st.markdown(f"<div class='message-right'>{message}</div>", unsafe_allow_html=True)
-                    # save messages
-                    st.session_state.messages.append({"role":"user", "content":message})
-                else:
-                    st.markdown(f"<div class='message-left'>{message}</div>", unsafe_allow_html=True)
-                    st.session_state.messages.append({"role":"user", "content":message})
-            st.markdown("</div>", unsafe_allow_html=True)
+    def update_ui_for_task(self, chosen_task):
+        """Update UI components dynamically based on the selected task."""
+        task_prompts = {
+            "No template": "Enter your question:",
+            "Summarization": "Enter text to summarize:",
+            "Question Answering": "Ask a question about the given context:",
+            "Language Learning": "Enter a sentence to analyze sentiment:",
+            "Web Scraping": None  # Web scraping has its own custom UI logic
+        }
+        return task_prompts.get(chosen_task, "Enter your question:")
+
+    def display_web_scraping_ui(self):
+        """Custom UI for Web Scraping task with save functionality."""
+        st.title("AI Web Scraper")
+        
+        # Input URL
+        url = st.text_input("Enter Website URL", key="web_scraping_url")
+
+        # Step 1: Scrape the Website
+        if st.button("Scrape Website"):
+            if url:
+                st.write("Scraping the website...")
+
+                # Scrape the website
+                dom_content = scrape_website(url)
+                body_content = extract_body_content(dom_content)
+                cleaned_content = clean_body_content(body_content)
+                body_no_style_and_script = remove_style_and_script_sections(dom_content)
+                asin_info = extract_asin_info(dom_content)
+
+                # Store all data in session state
+                st.session_state["web_scraping_data"] = {
+                    "dom_content": cleaned_content,
+                    "body_content": body_content,
+                    "body_no_style_and_script": body_no_style_and_script,
+                    "asin_info": asin_info,
+                }
+                st.success("Website scraped successfully!")
+
+        # Ensure scraping data exists in session state
+        if "web_scraping_data" in st.session_state:
+            data = st.session_state["web_scraping_data"]
+
+            # Display sections for content
+            with st.expander("View Body Content"):
+                st.text_area("Body Content", data["body_content"], height=300)
+                if st.button("Save Body Content", key="save_body_content"):
+                    self.save_content("raw_html_body", data["body_content"], "Body Content")
+
+            with st.expander("View Body Content (no script/style)"):
+                st.text_area("Body Content Reduced", data["body_no_style_and_script"], height=300)
+                if st.button("Save Reduced Body Content", key="save_reduced_body"):
+                    self.save_content("html_body_no_style_script", data["body_no_style_and_script"], "Reduced Body Content")
+
+            with st.expander("View Product List (ASIN Info)"):
+                st.text_area("ASIN Info", data["asin_info"], height=300)
+                if st.button("Save ASIN Info", key="save_asin_info"):
+                    self.save_content("extracted_asin_info", data["asin_info"], "ASIN Info")
+
+            with st.expander("View DOM Content"):
+                st.text_area("DOM Content", data["dom_content"], height=300)
+                if st.button("Save DOM Content", key="save_dom_content"):
+                    self.save_content("extracted_dom_content", data["dom_content"], "DOM Content")
+
+    def save_content(self, base_name, content, content_type):
+        """Save content to a file."""
+        try:
+            file_path = FileSaver.create_unique_filename(base_name)
+            FileSaver.save_to_file(file_path, content)
+            st.success(f"{content_type} saved successfully as {file_path}!")
+        except Exception as e:
+            st.error(f"Error saving {content_type}: {str(e)}")
 
     def run(self):
         self.setup_page_layout()
@@ -155,28 +259,37 @@ class StreamlitApp:
 
         # Define task-template pairs
         task_template_pairs = {
-            "No template" : None,
+            "No template": None,
             "Summarization": "template1",
             "Question Answering": "template2",
-            "Sentiment Analysis": "template3"
+            "Language Learning": "template3",
+            "Web Scraping": "web_scraping"
         }
 
         st.sidebar.title("Choose a Template Task")
         task_options = list(task_template_pairs.keys())
         chosen_task = st.sidebar.selectbox("Select a task", task_options)
-        chosen_template = task_template_pairs[chosen_task]
 
-        st.title("Ask Your Model")
-        question = st.text_input("Enter your question:")
+        # Check if chosen task is Web Scraping and render its custom UI
+        if chosen_task == "Web Scraping":
+            self.display_web_scraping_ui()
+        else:
+            # Render generic task UI for other templates
+            input_label = self.update_ui_for_task(chosen_task)
+            question = st.text_input(input_label)
+            st.write(f"Chosen Template: {task_template_pairs[chosen_task]}")
 
-        # Display the chosen template below the text bar and update it when a new task is selected
-        st.write(f"Chosen Template: {chosen_template}")
+            if st.button("Submit"):
+                if question:
+                    query_executor = QueryExecutor(self.model_selector.get_model(chosen_model))
+                    output = query_executor.ask_question(
+                        question=question,
+                        template=task_template_pairs[chosen_task],
+                        task=chosen_task
+                    )
+                    st.write(output)
 
-        if st.button("Submit"):
-            if question:
-                query_executor = QueryExecutor(self.model_selector.get_model(chosen_model))
-                output = query_executor.ask_question(question=question, template=chosen_template, task=chosen_task)
-                st.write(output)
+
 
 if __name__ == '__main__':
     app = StreamlitApp()
