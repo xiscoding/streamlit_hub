@@ -5,4 +5,4 @@ ai_scrape/
 api_key*
 secrets.toml
 saved_files/
-__pycache__/
+__pycache__
